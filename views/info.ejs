@@ -1,0 +1,231 @@
+<%- include('partials/header') %>
+
+<div class="dashboard">
+    <div class="page-header">
+        <h1><i class="fas fa-code"></i> <%= config.coinName %> Public API</h1>
+        <p class="page-subtitle">Access blockchain data programmatically</p>
+    </div>
+
+    <!-- API Calls Section -->
+    <div class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-server"></i> API Calls</h2>
+        </div>
+        <p class="text-muted">Return data from the blockchain</p>
+        
+        <div class="api-list">
+            <div class="api-item">
+                <h4>getdifficulty</h4>
+                <p>Returns the current difficulty.</p>
+                <a href="/api/getdifficulty" class="api-link" target="_blank">
+                    <%= config.explorerName %>/api/getdifficulty
+                </a>
+            </div>
+
+            <div class="api-item">
+                <h4>getblockcount</h4>
+                <p>Returns the current block index.</p>
+                <a href="/api/getblockcount" class="api-link" target="_blank">
+                    <%= config.explorerName %>/api/getblockcount
+                </a>
+            </div>
+
+            <div class="api-item">
+                <h4>getblockhash [index]</h4>
+                <p>Returns the hash of the block at [index]; index 0 is the genesis block.</p>
+                <a href="/api/getblockhash?index=1" class="api-link" target="_blank">
+                    <%= config.explorerName %>/api/getblockhash?index=1
+                </a>
+            </div>
+
+            <div class="api-item">
+                <h4>getblock [hash]</h4>
+                <p>Returns information about the block with the given hash.</p>
+                <a href="#" class="api-link api-example">
+                    <%= config.explorerName %>/api/getblock?hash=&lt;blockhash&gt;
+                </a>
+            </div>
+
+            <div class="api-item">
+                <h4>getrawtransaction [txid] [decrypt]</h4>
+                <p>Returns raw transaction representation for given transaction id. decrypt can be set to 0(false) or 1(true).</p>
+                <a href="#" class="api-link api-example">
+                    <%= config.explorerName %>/api/getrawtransaction?txid=&lt;txid&gt;&amp;decrypt=0
+                </a>
+                <br>
+                <a href="#" class="api-link api-example">
+                    <%= config.explorerName %>/api/getrawtransaction?txid=&lt;txid&gt;&amp;decrypt=1
+                </a>
+            </div>
+
+            <div class="api-item">
+                <h4>getnetworkhashps</h4>
+                <p>Returns the current network hashrate. (hash/s)</p>
+                <a href="/api/getnetworkhashps" class="api-link" target="_blank">
+                    <%= config.explorerName %>/api/getnetworkhashps
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Extended API Section -->
+    <div class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-plug"></i> Extended API</h2>
+        </div>
+        <p class="text-muted">Return data from local indexes</p>
+
+        <div class="api-list">
+            <div class="api-item">
+                <h4>getmoneysupply</h4>
+                <p>Returns current money supply</p>
+                <a href="/ext/getmoneysupply" class="api-link" target="_blank">
+                    <%= config.explorerName %>/ext/getmoneysupply
+                </a>
+            </div>
+
+            <div class="api-item">
+                <h4>getaddress (/ext/getaddress/hash)</h4>
+                <p>Returns information for given address</p>
+                <a href="#" class="api-link api-example">
+                    <%= config.explorerName %>/ext/getaddress/&lt;address&gt;
+                </a>
+            </div>
+
+            <div class="api-item">
+                <h4>getaddresstxs (/ext/getaddresstxs/hash/start/length)</h4>
+                <p>Returns last [length] transactions for address [hash], starting from offset [start]</p>
+                <a href="#" class="api-link api-example">
+                    <%= config.explorerName %>/ext/getaddresstxs/&lt;address&gt;/0/50
+                </a>
+            </div>
+
+            <div class="api-item">
+                <h4>gettx (/ext/gettx/hash)</h4>
+                <p>Returns information for given tx hash</p>
+                <a href="#" class="api-link api-example">
+                    <%= config.explorerName %>/ext/gettx/&lt;txid&gt;
+                </a>
+            </div>
+
+            <div class="api-item">
+                <h4>getbalance (/ext/getbalance/hash)</h4>
+                <p>Returns current balance of given address</p>
+                <a href="#" class="api-link api-example">
+                    <%= config.explorerName %>/ext/getbalance/&lt;address&gt;
+                </a>
+            </div>
+
+            <div class="api-item">
+                <h4>getlasttxs (/ext/getlasttxs/min/start/length)</h4>
+                <p>Returns last [length] transactions greater than [min] coins, starting from offset [start]<br>
+                <em>Note: [length] is limited to returning 100 records per query</em></p>
+                <a href="/ext/getlasttxs/100/0/10" class="api-link" target="_blank">
+                    <%= config.explorerName %>/ext/getlasttxs/100/0/10
+                </a>
+            </div>
+
+            <div class="api-item">
+                <h4>getbasicstats</h4>
+                <p>Returns basic statistics about the coin including: block count, circulating supply</p>
+                <a href="/ext/getbasicstats" class="api-link" target="_blank">
+                    <%= config.explorerName %>/ext/getbasicstats
+                </a>
+            </div>
+
+            <div class="api-item">
+                <h4>getsummary</h4>
+                <p>Returns a summary of coin data including: difficulty, circulating supply, hash rate, block count</p>
+                <a href="/ext/getsummary" class="api-link" target="_blank">
+                    <%= config.explorerName %>/ext/getsummary
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Linking Section -->
+    <div class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-link"></i> Linking (GET)</h2>
+        </div>
+        <p class="text-muted">Linking to the block explorer</p>
+
+        <div class="api-list">
+            <div class="api-item">
+                <h4>transaction (/tx/txid)</h4>
+                <a href="#" class="api-link api-example">
+                    <%= config.explorerName %>/tx/&lt;txid&gt;
+                </a>
+            </div>
+
+            <div class="api-item">
+                <h4>block (/block/hash)</h4>
+                <a href="#" class="api-link api-example">
+                    <%= config.explorerName %>/block/&lt;blockhash&gt;
+                </a>
+            </div>
+
+            <div class="api-item">
+                <h4>address (/address/hash)</h4>
+                <a href="#" class="api-link api-example">
+                    <%= config.explorerName %>/address/&lt;address&gt;
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .api-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .api-item {
+        background: var(--card-bg, #1a1a2e);
+        border-radius: 8px;
+        padding: 1.25rem;
+        border: 1px solid var(--border-color, #2a2a4a);
+    }
+    
+    .api-item h4 {
+        margin: 0 0 0.5rem 0;
+        color: var(--accent-color, #F5A623);
+        font-family: 'Monaco', 'Menlo', monospace;
+    }
+    
+    .api-item p {
+        margin: 0 0 0.75rem 0;
+        color: var(--text-muted, #888);
+        font-size: 0.9rem;
+    }
+    
+    .api-link {
+        display: inline-block;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 0.85rem;
+        color: var(--link-color, #4da3ff);
+        text-decoration: none;
+        padding: 0.5rem 0.75rem;
+        background: rgba(77, 163, 255, 0.1);
+        border-radius: 4px;
+        margin-top: 0.25rem;
+        word-break: break-all;
+    }
+    
+    .api-link:hover {
+        background: rgba(77, 163, 255, 0.2);
+    }
+    
+    .api-example {
+        color: var(--text-muted, #888);
+        cursor: default;
+    }
+    
+    .api-example:hover {
+        background: rgba(77, 163, 255, 0.1);
+    }
+</style>
+
+<%- include('partials/footer') %>

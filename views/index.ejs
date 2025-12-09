@@ -1,0 +1,449 @@
+<%- include('partials/header') %>
+
+    <div class="dashboard">
+        <div class="page-header">
+            <div class="header-left">
+                <h1><i class="fas fa-chart-line"></i> Dashboard</h1>
+                <p class="page-subtitle">Real-time <%= config.coinName %> blockchain statistics and recent blocks</p>
+            </div>
+            <div class="auto-refresh-indicator" id="refresh-indicator" title="Auto-refresh enabled">
+                <i class="fas fa-sync-alt"></i>
+                <span class="refresh-countdown" id="refresh-countdown">10s</span>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid" id="stats-primary">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">BLOCKS</span>
+                    <i class="fas fa-cube stat-icon"></i>
+                </div>
+                <div class="stat-value" id="stat-blocks">
+                    <%= formatNumber(tipHeight) %>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">HASHRATE</span>
+                    <i class="fas fa-tachometer-alt stat-icon"></i>
+                </div>
+                <div class="stat-value" id="stat-hashrate">
+                    <%= formatHashrate(hashrate) %>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">AVG BLOCK TIME</span>
+                    <i class="fas fa-clock stat-icon"></i>
+                </div>
+                <div class="stat-value" id="stat-blocktime">
+                    <%= avgBlockTime %>s
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">MEMPOOL TXS</span>
+                    <i class="fas fa-layer-group stat-icon"></i>
+                </div>
+                <div class="stat-value" id="stat-mempool">
+                    <%= formatNumber(mempoolCount) %>
+                </div>
+            </div>
+        </div>
+
+        <!-- Secondary Stats Row -->
+        <div class="stats-grid stats-secondary">
+            <div class="stat-card accent">
+                <div class="stat-header">
+                    <span class="stat-label">DIFFICULTY</span>
+                    <i class="fas fa-mountain stat-icon"></i>
+                </div>
+                <div class="stat-value" id="stat-difficulty">
+                    <%= formatDifficulty(difficulty) %>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">SUPPLY</span>
+                    <i class="fas fa-coins stat-icon"></i>
+                </div>
+                <div class="stat-value" id="stat-supply">
+                    <%= formatNumber(Math.round(supply)) %> <span class="currency">
+                            <%= config.coinTicker %>
+                        </span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">BLOCK REWARD</span>
+                    <i class="fas fa-gift stat-icon"></i>
+                </div>
+                <div class="stat-value" id="stat-reward">
+                    <% if (blockReward> 0) { %>
+                        <%= (blockReward / 100000000).toFixed(8) %> <span class="currency">
+                                <%= config.coinTicker %>
+                            </span>
+                            <% } else { %>
+                                <span class="loading-text">Loading...</span>
+                                <% } %>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Blocks Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2><i class="fas fa-cubes"></i> Recent Blocks</h2>
+                <a href="/blocks" class="view-all-link">View all <i class="fas fa-arrow-right"></i></a>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Height</th>
+                            <th>Hash</th>
+                            <th>Time</th>
+                            <th>Transactions</th>
+                            <th>Size</th>
+                        </tr>
+                    </thead>
+                    <tbody id="blocks-table-body">
+                        <% blocks.forEach(function(block) { %>
+                            <tr class="clickable-row" onclick="window.location='/block/<%= block.id %>'">
+                                <td><span class="block-height">
+                                        <%= formatNumber(block.height) %>
+                                    </span></td>
+                                <td>
+                                    <span class="hash-value" title="<%= block.id %>">
+                                        <%= formatHash(block.id, 20) %>
+                                            <button class="copy-btn"
+                                                onclick="event.stopPropagation(); copyToClipboard('<%= block.id %>')"
+                                                title="Copy">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                    </span>
+                                </td>
+                                <td class="text-muted">
+                                    <%= formatTimeAgo(block.timestamp) %>
+                                </td>
+                                <td>
+                                    <%= block.tx_count %>
+                                </td>
+                                <td>
+                                    <%= formatBytes(block.size) %>
+                                </td>
+                            </tr>
+                            <% }); %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Transaction Volume Chart -->
+        <div class="section">
+            <div class="section-header">
+                <h2><i class="fas fa-chart-area"></i> Transaction Volume (Last <span id="chart-block-count">
+                        <%= blocks.length %>
+                    </span> Blocks)</h2>
+            </div>
+            <div class="chart-container">
+                <canvas id="txVolumeChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .auto-refresh-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--success);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .auto-refresh-indicator:hover {
+            border-color: var(--success);
+        }
+
+        .auto-refresh-indicator.spinning i {
+            animation: spin 1s linear infinite;
+        }
+
+        .auto-refresh-indicator.paused {
+            color: var(--text-secondary);
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .refresh-countdown {
+            font-family: monospace;
+            min-width: 2.5rem;
+        }
+
+        .loading-text {
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .new-block-row {
+            animation: highlightNew 2s ease-out;
+        }
+
+        @keyframes highlightNew {
+            0% {
+                background-color: rgba(245, 166, 35, 0.3);
+            }
+
+            100% {
+                background-color: transparent;
+            }
+        }
+    </style>
+
+    <script>
+        const coinTicker = '<%= config.coinTicker %>';
+        let txVolumeChart = null;
+        let refreshInterval = null;
+        let countdownInterval = null;
+        let countdown = 10;
+        let isRefreshing = false;
+        let autoRefreshEnabled = true;
+
+        // Format helpers (client-side versions)
+        function formatNumber(num) {
+            return num ? num.toLocaleString() : '0';
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatTimeAgo(timestamp) {
+            const now = Math.floor(Date.now() / 1000);
+            const diff = now - timestamp;
+            if (diff < 60) return `${diff} seconds ago`;
+            if (diff < 3600) return `${Math.floor(diff / 60)} minutes ago`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
+            return `${Math.floor(diff / 86400)} days ago`;
+        }
+
+        function formatHash(hash, length = 16) {
+            if (!hash) return '';
+            return hash.length > length ? `${hash.slice(0, length / 2)}...${hash.slice(-length / 2)}` : hash;
+        }
+
+        function formatHashrate(hashrate) {
+            if (hashrate >= 1e18) return (hashrate / 1e18).toFixed(2) + ' EH/s';
+            if (hashrate >= 1e15) return (hashrate / 1e15).toFixed(2) + ' PH/s';
+            if (hashrate >= 1e12) return (hashrate / 1e12).toFixed(2) + ' TH/s';
+            if (hashrate >= 1e9) return (hashrate / 1e9).toFixed(2) + ' GH/s';
+            if (hashrate >= 1e6) return (hashrate / 1e6).toFixed(2) + ' MH/s';
+            if (hashrate >= 1e3) return (hashrate / 1e3).toFixed(2) + ' KH/s';
+            return hashrate.toFixed(2) + ' H/s';
+        }
+
+        function formatDifficulty(diff) {
+            if (diff >= 1e12) return (diff / 1e12).toFixed(2) + 'T';
+            if (diff >= 1e9) return (diff / 1e9).toFixed(2) + 'B';
+            if (diff >= 1e6) return (diff / 1e6).toFixed(2) + 'M';
+            if (diff >= 1e3) return (diff / 1e3).toFixed(2) + 'K';
+            return diff.toFixed(2);
+        }
+
+        // Chart.js theme colors
+        function getChartColors() {
+            const isDark = !document.documentElement.hasAttribute('data-theme') ||
+                document.documentElement.getAttribute('data-theme') === 'dark';
+            return {
+                gridColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.1)',
+                textColor: isDark ? '#888' : '#444',
+                primary: '#F5A623',
+                primaryBg: 'rgba(245, 166, 35, 0.2)'
+            };
+        }
+
+        // Initialize chart
+        function initChart(blockData) {
+            const colors = getChartColors();
+            const ctx = document.getElementById('txVolumeChart').getContext('2d');
+
+            if (txVolumeChart) txVolumeChart.destroy();
+
+            txVolumeChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: blockData.map(b => b.height),
+                    datasets: [{
+                        label: 'Transactions per Block',
+                        data: blockData.map(b => b.tx_count),
+                        fill: true,
+                        backgroundColor: colors.primaryBg,
+                        borderColor: colors.primary,
+                        borderWidth: 2,
+                        tension: 0.4,
+                        pointRadius: 3,
+                        pointBackgroundColor: colors.primary
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: {
+                            grid: { color: colors.gridColor },
+                            ticks: { color: colors.textColor }
+                        },
+                        y: {
+                            grid: { color: colors.gridColor },
+                            ticks: { color: colors.textColor },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update blocks table
+        function updateBlocksTable(blocks) {
+            const tbody = document.getElementById('blocks-table-body');
+            const currentFirstHeight = parseInt(tbody.querySelector('tr td span.block-height')?.textContent.replace(/,/g, '') || '0');
+
+            let html = '';
+            blocks.forEach((block, index) => {
+                const isNew = block.height > currentFirstHeight;
+                html += `
+                    <tr class="clickable-row ${isNew ? 'new-block-row' : ''}" onclick="window.location='/block/${block.id}'">
+                        <td><span class="block-height">${formatNumber(block.height)}</span></td>
+                        <td>
+                            <span class="hash-value" title="${block.id}">
+                                ${formatHash(block.id, 20)}
+                                <button class="copy-btn" onclick="event.stopPropagation(); copyToClipboard('${block.id}')" title="Copy">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </span>
+                        </td>
+                        <td class="text-muted">${formatTimeAgo(block.timestamp)}</td>
+                        <td>${block.tx_count}</td>
+                        <td>${formatBytes(block.size)}</td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        // Refresh dashboard data
+        async function refreshDashboard() {
+            if (isRefreshing) return;
+            isRefreshing = true;
+
+            const indicator = document.getElementById('refresh-indicator');
+            indicator.classList.add('spinning');
+
+            try {
+                const response = await fetch('/api/dashboard');
+                const data = await response.json();
+
+                // Update stats
+                document.getElementById('stat-blocks').textContent = formatNumber(data.tipHeight);
+                document.getElementById('stat-hashrate').textContent = formatHashrate(data.hashrate);
+                document.getElementById('stat-blocktime').textContent = data.avgBlockTime + 's';
+                document.getElementById('stat-mempool').textContent = formatNumber(data.mempoolCount);
+                document.getElementById('stat-difficulty').textContent = formatDifficulty(data.difficulty);
+                document.getElementById('stat-supply').innerHTML = formatNumber(Math.round(data.supply)) + ' <span class="currency">' + coinTicker + '</span>';
+
+                if (data.blockReward > 0) {
+                    document.getElementById('stat-reward').innerHTML = (data.blockReward / 100000000).toFixed(8) + ' <span class="currency">' + coinTicker + '</span>';
+                }
+
+                // Update blocks table
+                updateBlocksTable(data.blocks);
+
+                // Update chart
+                document.getElementById('chart-block-count').textContent = data.blocks.length;
+                initChart(data.blocks.slice().reverse());
+
+            } catch (error) {
+                console.error('Failed to refresh dashboard:', error);
+            } finally {
+                isRefreshing = false;
+                indicator.classList.remove('spinning');
+                countdown = 10;
+            }
+        }
+
+        // Countdown timer
+        function updateCountdown() {
+            if (!autoRefreshEnabled) return;
+
+            countdown--;
+            document.getElementById('refresh-countdown').textContent = countdown + 's';
+
+            if (countdown <= 0) {
+                refreshDashboard();
+            }
+        }
+
+        // Toggle auto-refresh
+        function toggleAutoRefresh() {
+            autoRefreshEnabled = !autoRefreshEnabled;
+            const indicator = document.getElementById('refresh-indicator');
+
+            if (autoRefreshEnabled) {
+                indicator.classList.remove('paused');
+                indicator.title = 'Auto-refresh enabled (click to pause)';
+                countdown = 10;
+            } else {
+                indicator.classList.add('paused');
+                indicator.title = 'Auto-refresh paused (click to resume)';
+                document.getElementById('refresh-countdown').textContent = 'Paused';
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initial chart
+            const initialBlocks = <%- JSON.stringify(blocks.slice().reverse()) %>;
+            initChart(initialBlocks);
+
+            // Start auto-refresh countdown every 1 second
+            console.log('[AutoRefresh] Starting auto-refresh with 10s interval');
+            countdownInterval = setInterval(updateCountdown, 1000);
+
+            // Click handler for indicator
+            document.getElementById('refresh-indicator').addEventListener('click', toggleAutoRefresh);
+        });
+    </script>
+
+    <%- include('partials/footer') %>

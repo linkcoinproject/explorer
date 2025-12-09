@@ -1,0 +1,975 @@
+<%- include('partials/header') %>
+
+    <div class="address-page">
+        <div class="page-header">
+            <div class="breadcrumb">
+                <a href="/">Dashboard</a>
+                <i class="fas fa-chevron-right"></i>
+                <span>Address</span>
+            </div>
+            <h1><i class="fas fa-wallet"></i> Address Details</h1>
+        </div>
+
+        <!-- Address Card -->
+        <div class="content-card address-card">
+            <div class="address-header">
+                <div class="address-icon">
+                    <i class="fas fa-wallet"></i>
+                </div>
+                <div class="address-info">
+                    <div class="address-full">
+                        <%= address %>
+                            <button class="copy-btn" onclick="copyToClipboard('<%= address %>')" title="Copy">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Balance Stats -->
+        <div class="stats-grid address-stats">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">CONFIRMED BALANCE</span>
+                    <i class="fas fa-check-circle stat-icon"></i>
+                </div>
+                <div class="stat-value">
+                    <%= (confirmedBalance / 100000000).toFixed(8) %> <span class="currency">
+                            <%= config.coinTicker %>
+                        </span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">PENDING BALANCE</span>
+                    <i class="fas fa-clock stat-icon"></i>
+                </div>
+                <div class="stat-value">
+                    <%= (pendingBalance / 100000000).toFixed(8) %> <span class="currency">
+                            <%= config.coinTicker %>
+                        </span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">TOTAL BALANCE</span>
+                    <i class="fas fa-coins stat-icon"></i>
+                </div>
+                <div class="stat-value highlight">
+                    <%= ((confirmedBalance + pendingBalance) / 100000000).toFixed(8) %> <span class="currency">
+                            <%= config.coinTicker %>
+                        </span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">TRANSACTIONS</span>
+                    <i class="fas fa-exchange-alt stat-icon"></i>
+                </div>
+                <div class="stat-value">
+                    <%= formatNumber(totalTxs) %>
+                </div>
+            </div>
+        </div>
+
+        <!-- Address Statistics -->
+        <div class="content-card">
+            <div class="card-header">
+                <h2><i class="fas fa-chart-pie"></i> Address Statistics</h2>
+            </div>
+
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Total Received</span>
+                    <span class="detail-value">
+                        <%= ((addressInfo.chain_stats && addressInfo.chain_stats.funded_txo_sum ?
+                            addressInfo.chain_stats.funded_txo_sum : 0) / 100000000).toFixed(8) %>
+                            <%= config.coinTicker %>
+                    </span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Total Sent</span>
+                    <span class="detail-value">
+                        <%= ((addressInfo.chain_stats && addressInfo.chain_stats.spent_txo_sum ?
+                            addressInfo.chain_stats.spent_txo_sum : 0) / 100000000).toFixed(8) %>
+                            <%= config.coinTicker %>
+                    </span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Received UTXOs</span>
+                    <span class="detail-value">
+                        <%= formatNumber(addressInfo.chain_stats && addressInfo.chain_stats.funded_txo_count ?
+                            addressInfo.chain_stats.funded_txo_count : 0) %>
+                    </span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Spent UTXOs</span>
+                    <span class="detail-value">
+                        <%= formatNumber(addressInfo.chain_stats && addressInfo.chain_stats.spent_txo_count ?
+                            addressInfo.chain_stats.spent_txo_count : 0) %>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs Section -->
+        <div class="content-card tabs-card">
+            <!-- Tab Navigation -->
+            <div class="tabs-nav">
+                <button class="tab-btn active" data-tab="transactions" onclick="switchTab('transactions')">
+                    <i class="fas fa-history"></i> Transaction History
+                    <span class="tab-count">
+                        <%= formatNumber(totalTxs) %>
+                    </span>
+                </button>
+                <button class="tab-btn" data-tab="utxos" onclick="switchTab('utxos')">
+                    <i class="fas fa-coins"></i> Unspent Outputs
+                    <span class="tab-count">
+                        <%= formatNumber(totalUtxos || 0) %>
+                    </span>
+                </button>
+                <button class="btn-expand-all" onclick="toggleExpandAll()">
+                    <i class="fas fa-expand-alt" id="expand-icon"></i> <span id="expand-text">Expand All</span>
+                </button>
+            </div>
+
+            <!-- Transactions Tab -->
+            <div class="tab-content active" id="tab-transactions">
+                <div class="tab-header">
+                    <h3><i class="fas fa-history"></i> Transaction History</h3>
+                    <div class="tab-header-controls">
+                        <span class="showing-info" id="tx-showing">Showing 1-<%= Math.min(25, totalTxs) %> of <%=
+                                    formatNumber(totalTxs) %></span>
+                        <div class="header-pagination">
+                            <button class="page-btn-sm" id="tx-prev" onclick="loadPrevPage('tx')" disabled>
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button class="page-btn-sm" id="tx-next" onclick="loadNextPage('tx')" <%=totalTxs <=25
+                                ? 'disabled' : '' %>>
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="expandable-list" id="tx-list">
+                    <% if (transactions && transactions.length> 0) { %>
+                        <% transactions.forEach(function(tx) { %>
+                            <div class="expandable-item" data-txid="<%= tx.txid %>">
+                                <div class="item-header" onclick="toggleItem(this)">
+                                    <div class="item-main">
+                                        <span class="hash-value" title="<%= tx.txid %>">
+                                            <%= formatHash(tx.txid, 20) %>
+                                        </span>
+                                        <button class="copy-btn"
+                                            onclick="event.stopPropagation(); copyToClipboard('<%= tx.txid %>')"
+                                            title="Copy">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                    <div class="item-meta">
+                                        <% if (tx.status && tx.status.confirmed) { %>
+                                            <a href="/block/<%= tx.status.block_hash %>" class="block-link"
+                                                onclick="event.stopPropagation()">
+                                                Block <%= formatNumber(tx.status.block_height) %>
+                                            </a>
+                                            <span class="time-ago">
+                                                <%= formatTimeAgo(tx.status.block_time) %>
+                                            </span>
+                                            <% } else { %>
+                                                <span class="badge badge-pending">Pending</span>
+                                                <% } %>
+                                    </div>
+                                    <i class="fas fa-chevron-down expand-icon"></i>
+                                </div>
+                                <div class="item-details">
+                                    <div class="details-loader">
+                                        <i class="fas fa-spinner fa-spin"></i> Loading...
+                                    </div>
+                                </div>
+                            </div>
+                            <% }); %>
+                                <% } else { %>
+                                    <div class="no-data">No transactions found</div>
+                                    <% } %>
+                </div>
+                <div id="tx-loader" class="infinite-loader" style="display: none;">
+                    <i class="fas fa-spinner fa-spin"></i> Loading more transactions...
+                </div>
+            </div>
+
+            <!-- UTXOs Tab -->
+            <div class="tab-content" id="tab-utxos">
+                <div class="tab-header">
+                    <h3><i class="fas fa-coins"></i> Unspent Outputs</h3>
+                    <div class="tab-header-controls">
+                        <span class="showing-info" id="utxo-showing">
+                            <% if (utxoError) { %>Unable to load<% } else { %>
+                                    Showing 1-<%= Math.min(25, utxos.length) %> of <%= formatNumber(totalUtxos ||
+                                            utxos.length) %>
+                                            <% } %>
+                        </span>
+                        <div class="header-pagination">
+                            <button class="page-btn-sm" id="utxo-prev" onclick="loadPrevPage('utxo')" disabled>
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button class="page-btn-sm" id="utxo-next" onclick="loadNextPage('utxo')" <%=(totalUtxos ||
+                                0) <=25 ? 'disabled' : '' %>>
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <% if (utxoError) { %>
+                    <div class="utxo-error" style="padding: 40px; color: var(--text-muted); text-align: center;">
+                        <i class="fas fa-exclamation-triangle"
+                            style="color: var(--warning); font-size: 2rem; margin-bottom: 10px;"></i>
+                        <p>Unable to load UTXOs: Too many entries.</p>
+                        <p style="font-size: 0.85rem;">This address has a very large transaction history.</p>
+                    </div>
+                    <% } else { %>
+                        <div class="expandable-list" id="utxo-list">
+                            <% if (utxos && utxos.length> 0) { %>
+                                <% utxos.forEach(function(utxo) { %>
+                                    <div class="expandable-item" data-txid="<%= utxo.txid %>"
+                                        data-vout="<%= utxo.vout %>">
+                                        <div class="item-header" onclick="toggleItem(this)">
+                                            <div class="item-main">
+                                                <span class="hash-value" title="<%= utxo.txid %>">
+                                                    <%= formatHash(utxo.txid, 20) %>:<%= utxo.vout %>
+                                                </span>
+                                                <button class="copy-btn"
+                                                    onclick="event.stopPropagation(); copyToClipboard('<%= utxo.txid %>')"
+                                                    title="Copy">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                            </div>
+                                            <div class="item-meta">
+                                                <span class="utxo-value">
+                                                    <%= (utxo.value / 100000000).toFixed(8) %>
+                                                        <%= config.coinTicker %>
+                                                </span>
+                                                <% if (utxo.status && utxo.status.confirmed) { %>
+                                                    <span class="badge badge-confirmed">Block <%=
+                                                            formatNumber(utxo.status.block_height) %></span>
+                                                    <% } else { %>
+                                                        <span class="badge badge-pending">Pending</span>
+                                                        <% } %>
+                                            </div>
+                                            <i class="fas fa-chevron-down expand-icon"></i>
+                                        </div>
+                                        <div class="item-details">
+                                            <div class="utxo-details-content">
+                                                <div class="detail-row">
+                                                    <span class="label">Transaction ID</span>
+                                                    <span class="value mono"><a href="/tx/<%= utxo.txid %>">
+                                                            <%= utxo.txid %>
+                                                        </a></span>
+                                                </div>
+                                                <div class="detail-row">
+                                                    <span class="label">Output Index (vout)</span>
+                                                    <span class="value">
+                                                        <%= utxo.vout %>
+                                                    </span>
+                                                </div>
+                                                <div class="detail-row">
+                                                    <span class="label">Value</span>
+                                                    <span class="value highlight">
+                                                        <%= (utxo.value / 100000000).toFixed(8) %>
+                                                            <%= config.coinTicker %>
+                                                    </span>
+                                                </div>
+                                                <div class="detail-row">
+                                                    <span class="label">Value (satoshis)</span>
+                                                    <span class="value mono">
+                                                        <%= utxo.value %>
+                                                    </span>
+                                                </div>
+                                                <% if (utxo.status && utxo.status.confirmed) { %>
+                                                    <div class="detail-row">
+                                                        <span class="label">Block Height</span>
+                                                        <span class="value"><a
+                                                                href="/block/<%= utxo.status.block_hash %>">
+                                                                <%= formatNumber(utxo.status.block_height) %>
+                                                            </a></span>
+                                                    </div>
+                                                    <% } %>
+                                                        <div class="detail-row actions">
+                                                            <a href="/tx/<%= utxo.txid %>" class="btn-view-tx">
+                                                                <i class="fas fa-external-link-alt"></i> View
+                                                                Transaction
+                                                            </a>
+                                                        </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <% }); %>
+                                        <% } else { %>
+                                            <div class="no-data">No unspent outputs found</div>
+                                            <% } %>
+                        </div>
+                        <div id="utxo-loader" class="infinite-loader" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i> Loading more UTXOs...
+                        </div>
+                        <% } %>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Expandable List */
+        .expandable-list {
+            padding: 0.75rem;
+        }
+
+        .expandable-item {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            background: var(--bg-card);
+        }
+
+        .expandable-item:hover {
+            border-color: var(--primary);
+        }
+
+        .expandable-item.expanded {
+            border-color: var(--primary);
+            box-shadow: 0 2px 10px var(--primary-glow);
+        }
+
+        .item-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.875rem 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .item-header:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .item-main {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1;
+        }
+
+        .item-main .hash-value {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            color: var(--info);
+        }
+
+        .item-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .block-link {
+            color: var(--primary);
+            font-size: 0.85rem;
+        }
+
+        .time-ago {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .utxo-value {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .expand-icon {
+            color: var(--text-secondary);
+            transition: transform 0.3s ease;
+        }
+
+        .expandable-item.expanded .expand-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Item Details */
+        .item-details {
+            display: none;
+            background: var(--bg-card-hover);
+            border-top: 1px solid var(--border-color);
+            padding: 1rem;
+        }
+
+        .expandable-item.expanded .item-details {
+            display: block;
+        }
+
+        .details-loader {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 1rem;
+        }
+
+        /* TX Details in address page */
+        .tx-details-content {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 1rem;
+            align-items: start;
+        }
+
+        @media (max-width: 768px) {
+            .tx-details-content {
+                grid-template-columns: 1fr;
+            }
+
+            .tx-details-content .io-arrow-small {
+                transform: rotate(90deg);
+                justify-self: center;
+            }
+        }
+
+        .io-column-small {
+            background: var(--bg-card);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            padding: 0.75rem;
+        }
+
+        .io-column-small h5 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.85rem;
+            color: var(--primary);
+        }
+
+        .io-item-small {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.4rem 0;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.85rem;
+        }
+
+        .io-item-small:last-child {
+            border-bottom: none;
+        }
+
+        .io-item-small .addr {
+            color: var(--info);
+            font-family: monospace;
+        }
+
+        .io-item-small .addr.coinbase {
+            color: var(--primary);
+        }
+
+        .io-item-small .amt {
+            color: var(--text-primary);
+        }
+
+        .io-arrow-small {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-size: 1.25rem;
+            padding-top: 2rem;
+        }
+
+        .tx-footer-small {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .tx-meta-small {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .btn-view-tx {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.75rem;
+            background: var(--primary);
+            color: #000;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .btn-view-tx:hover {
+            filter: brightness(1.1);
+            color: #000;
+        }
+
+        /* UTXO Details */
+        .utxo-details-content {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-row .label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .detail-row .value {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
+
+        .detail-row .value.mono {
+            font-family: monospace;
+            word-break: break-all;
+        }
+
+        .detail-row .value.highlight {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .detail-row .value a {
+            color: var(--info);
+        }
+
+        .detail-row.actions {
+            justify-content: flex-end;
+            padding-top: 0.75rem;
+        }
+
+        /* Expand All Button */
+        .btn-expand-all {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.5rem 1rem;
+            background: rgba(90, 200, 250, 0.15);
+            color: var(--info);
+            border: 1px solid var(--info);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-left: auto;
+            transition: all 0.2s;
+        }
+
+        .btn-expand-all:hover {
+            background: rgba(90, 200, 250, 0.25);
+        }
+
+        .btn-expand-all.active {
+            background: var(--info);
+            color: #fff;
+        }
+
+        .no-data {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 2rem;
+        }
+    </style>
+
+    <script>
+        // State
+        const addressHash = '<%= address %>';
+        const coinTicker = '<%= config.coinTicker %>';
+        let allExpanded = false;
+        let loadedTxDetails = {};
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.tab === tabName) btn.classList.add('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById('tab-' + tabName).classList.add('active');
+        }
+
+        // Toggle single item
+        async function toggleItem(headerEl) {
+            const item = headerEl.closest('.expandable-item');
+            const txid = item.dataset.txid;
+            const isExpanded = item.classList.contains('expanded');
+
+            if (isExpanded) {
+                item.classList.remove('expanded');
+            } else {
+                item.classList.add('expanded');
+                // Load TX details if not already loaded
+                if (!loadedTxDetails[txid] && !item.dataset.vout) {
+                    await loadTxDetails(item, txid);
+                }
+            }
+            updateExpandButton();
+        }
+
+        // Toggle expand all
+        async function toggleExpandAll() {
+            allExpanded = !allExpanded;
+            const activeTab = document.querySelector('.tab-content.active');
+            const items = activeTab.querySelectorAll('.expandable-item');
+
+            for (const item of items) {
+                if (allExpanded) {
+                    item.classList.add('expanded');
+                    // Load TX details if needed
+                    const txid = item.dataset.txid;
+                    if (!loadedTxDetails[txid] && !item.dataset.vout) {
+                        await loadTxDetails(item, txid);
+                    }
+                } else {
+                    item.classList.remove('expanded');
+                }
+            }
+            updateExpandButton();
+        }
+
+        // Update expand button state
+        function updateExpandButton() {
+            const btn = document.querySelector('.btn-expand-all');
+            const icon = document.getElementById('expand-icon');
+            const text = document.getElementById('expand-text');
+            const activeTab = document.querySelector('.tab-content.active');
+            const items = activeTab.querySelectorAll('.expandable-item');
+            const expandedCount = activeTab.querySelectorAll('.expandable-item.expanded').length;
+
+            if (expandedCount === items.length && items.length > 0) {
+                allExpanded = true;
+                btn.classList.add('active');
+                icon.className = 'fas fa-compress-alt';
+                text.textContent = 'Collapse All';
+            } else {
+                allExpanded = false;
+                btn.classList.remove('active');
+                icon.className = 'fas fa-expand-alt';
+                text.textContent = 'Expand All';
+            }
+        }
+
+        // Load transaction details
+        async function loadTxDetails(item, txid) {
+            const detailsEl = item.querySelector('.item-details');
+            try {
+                const response = await fetch(`/api/tx/${txid}`);
+                const tx = await response.json();
+                loadedTxDetails[txid] = true;
+                detailsEl.innerHTML = renderTxDetails(tx);
+            } catch (err) {
+                detailsEl.innerHTML = `
+                    <div class="details-error">
+                        <i class="fas fa-exclamation-triangle"></i> Failed to load
+                        <a href="/tx/${txid}" class="btn-view-tx">Open Transaction</a>
+                    </div>
+                `;
+            }
+        }
+
+        // Render transaction details
+        function renderTxDetails(tx) {
+            let inputsHtml = '';
+            let outputsHtml = '';
+            let totalInput = 0;
+            let totalOutput = 0;
+
+            // Inputs
+            (tx.vin || []).forEach(vin => {
+                const addr = vin.is_coinbase ? 'Coinbase' : (vin.prevout?.scriptpubkey_address || 'Unknown');
+                const value = vin.prevout?.value || 0;
+                totalInput += value;
+                inputsHtml += `
+                    <div class="io-item-small">
+                        <span class="addr ${vin.is_coinbase ? 'coinbase' : ''}">${vin.is_coinbase ? '⛏️ Coinbase' : formatHash(addr, 14)}</span>
+                        <span class="amt">${(value / 1e8).toFixed(8)}</span>
+                    </div>
+                `;
+            });
+
+            // Outputs
+            (tx.vout || []).forEach(vout => {
+                const addr = vout.scriptpubkey_address || 'Unknown';
+                const value = vout.value || 0;
+                totalOutput += value;
+                const isThisAddr = addr === addressHash;
+                outputsHtml += `
+                    <div class="io-item-small">
+                        <span class="addr" style="${isThisAddr ? 'color: var(--primary);' : ''}">${formatHash(addr, 14)}</span>
+                        <span class="amt" style="${isThisAddr ? 'color: var(--success); font-weight: 600;' : ''}">${(value / 1e8).toFixed(8)}</span>
+                    </div>
+                `;
+            });
+
+            const fee = tx.fee || 0;
+
+            return `
+                <div class="tx-details-content">
+                    <div class="io-column-small">
+                        <h5><i class="fas fa-sign-in-alt"></i> Inputs (${tx.vin?.length || 0})</h5>
+                        ${inputsHtml || '<div class="no-data">No inputs</div>'}
+                    </div>
+                    <div class="io-arrow-small"><i class="fas fa-arrow-right"></i></div>
+                    <div class="io-column-small">
+                        <h5><i class="fas fa-sign-out-alt"></i> Outputs (${tx.vout?.length || 0})</h5>
+                        ${outputsHtml || '<div class="no-data">No outputs</div>'}
+                    </div>
+                </div>
+                <div class="tx-footer-small">
+                    <div class="tx-meta-small">
+                        <span>Size: ${tx.size || 0} bytes</span>
+                        <span>Fee: ${(fee / 1e8).toFixed(8)} ${coinTicker}</span>
+                    </div>
+                    <a href="/tx/${tx.txid}" class="btn-view-tx">
+                        <i class="fas fa-external-link-alt"></i> Full Details
+                    </a>
+                </div>
+            `;
+        }
+
+        // Format hash
+        function formatHash(hash, length = 16) {
+            if (!hash) return '';
+            if (hash.length <= length) return hash;
+            const half = Math.floor(length / 2);
+            return hash.substring(0, half) + '...' + hash.substring(hash.length - half);
+        }
+
+        // Pagination state
+        let txPage = 0;
+        let utxoPage = 0;
+        let txTotal = <%= totalTxs %>;
+        let utxoTotal = <%= totalUtxos || 0 %>;
+        let isLoadingTx = false;
+        let isLoadingUtxo = false;
+
+        function loadNextPage(type) {
+            if (type === 'tx') {
+                txPage++;
+                loadTransactions(txPage);
+            } else {
+                utxoPage++;
+                loadUtxos(utxoPage);
+            }
+        }
+
+        function loadPrevPage(type) {
+            if (type === 'tx' && txPage > 0) {
+                txPage--;
+                loadTransactions(txPage);
+            } else if (type === 'utxo' && utxoPage > 0) {
+                utxoPage--;
+                loadUtxos(utxoPage);
+            }
+        }
+
+        async function loadTransactions(page) {
+            if (isLoadingTx) return;
+            isLoadingTx = true;
+            const loader = document.getElementById('tx-loader');
+            loader.style.display = 'block';
+
+            try {
+                const response = await fetch(`/api/address/${addressHash}/txs?start_index=${page * 25}&limit=25`);
+                const data = await response.json();
+                const txs = data.transactions || data || [];
+
+                const list = document.getElementById('tx-list');
+                list.innerHTML = '';
+
+                txs.forEach(tx => {
+                    list.insertAdjacentHTML('beforeend', createTxItem(tx));
+                });
+
+                const start = page * 25 + 1;
+                const end = Math.min((page + 1) * 25, txTotal);
+                document.getElementById('tx-showing').textContent = `Showing ${start}-${end} of ${txTotal.toLocaleString()}`;
+                document.getElementById('tx-prev').disabled = page === 0;
+                document.getElementById('tx-next').disabled = (page + 1) * 25 >= txTotal;
+            } catch (err) {
+                console.error('Failed to load transactions:', err);
+            } finally {
+                loader.style.display = 'none';
+                isLoadingTx = false;
+            }
+        }
+
+        function createTxItem(tx) {
+            const confirmed = tx.status && tx.status.confirmed;
+            const blockLink = confirmed
+                ? `<a href="/block/${tx.status.block_hash}" class="block-link" onclick="event.stopPropagation()">Block ${tx.status.block_height.toLocaleString()}</a>`
+                : '';
+            const time = confirmed && tx.status.block_time
+                ? `<span class="time-ago">${formatTimeAgo(tx.status.block_time)}</span>`
+                : '<span class="badge badge-pending">Pending</span>';
+
+            return `
+                <div class="expandable-item" data-txid="${tx.txid}">
+                    <div class="item-header" onclick="toggleItem(this)">
+                        <div class="item-main">
+                            <span class="hash-value" title="${tx.txid}">${formatHash(tx.txid, 20)}</span>
+                            <button class="copy-btn" onclick="event.stopPropagation(); copyToClipboard('${tx.txid}')" title="Copy">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="item-meta">
+                            ${blockLink}
+                            ${time}
+                        </div>
+                        <i class="fas fa-chevron-down expand-icon"></i>
+                    </div>
+                    <div class="item-details">
+                        <div class="details-loader">
+                            <i class="fas fa-spinner fa-spin"></i> Loading...
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadUtxos(page) {
+            if (isLoadingUtxo) return;
+            isLoadingUtxo = true;
+            const loader = document.getElementById('utxo-loader');
+            if (loader) loader.style.display = 'block';
+
+            try {
+                const response = await fetch(`/api/address/${addressHash}/utxo?start_index=${page * 25}&limit=25`);
+                const data = await response.json();
+                const utxos = data.utxos || data || [];
+
+                const list = document.getElementById('utxo-list');
+                list.innerHTML = '';
+
+                utxos.forEach(utxo => {
+                    list.insertAdjacentHTML('beforeend', createUtxoItem(utxo));
+                });
+
+                const start = page * 25 + 1;
+                const end = Math.min((page + 1) * 25, utxoTotal);
+                document.getElementById('utxo-showing').textContent = `Showing ${start}-${end} of ${utxoTotal.toLocaleString()}`;
+                document.getElementById('utxo-prev').disabled = page === 0;
+                document.getElementById('utxo-next').disabled = (page + 1) * 25 >= utxoTotal;
+            } catch (err) {
+                console.error('Failed to load UTXOs:', err);
+            } finally {
+                if (loader) loader.style.display = 'none';
+                isLoadingUtxo = false;
+            }
+        }
+
+        function createUtxoItem(utxo) {
+            const confirmed = utxo.status && utxo.status.confirmed;
+            const badge = confirmed
+                ? `<span class="badge badge-confirmed">Block ${utxo.status.block_height.toLocaleString()}</span>`
+                : '<span class="badge badge-pending">Pending</span>';
+
+            return `
+                <div class="expandable-item" data-txid="${utxo.txid}" data-vout="${utxo.vout}">
+                    <div class="item-header" onclick="toggleItem(this)">
+                        <div class="item-main">
+                            <span class="hash-value" title="${utxo.txid}">${formatHash(utxo.txid, 20)}:${utxo.vout}</span>
+                            <button class="copy-btn" onclick="event.stopPropagation(); copyToClipboard('${utxo.txid}')" title="Copy">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="item-meta">
+                            <span class="utxo-value">${(utxo.value / 1e8).toFixed(8)} ${coinTicker}</span>
+                            ${badge}
+                        </div>
+                        <i class="fas fa-chevron-down expand-icon"></i>
+                    </div>
+                    <div class="item-details">
+                        <div class="utxo-details-content">
+                            <div class="detail-row">
+                                <span class="label">Transaction ID</span>
+                                <span class="value mono"><a href="/tx/${utxo.txid}">${utxo.txid}</a></span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Output Index (vout)</span>
+                                <span class="value">${utxo.vout}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Value</span>
+                                <span class="value highlight">${(utxo.value / 1e8).toFixed(8)} ${coinTicker}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Value (satoshis)</span>
+                                <span class="value mono">${utxo.value}</span>
+                            </div>
+                            ${confirmed ? `
+                            <div class="detail-row">
+                                <span class="label">Block Height</span>
+                                <span class="value"><a href="/block/${utxo.status.block_hash}">${utxo.status.block_height.toLocaleString()}</a></span>
+                            </div>
+                            ` : ''}
+                            <div class="detail-row actions">
+                                <a href="/tx/${utxo.txid}" class="btn-view-tx">
+                                    <i class="fas fa-external-link-alt"></i> View Transaction
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatTimeAgo(timestamp) {
+            const seconds = Math.floor(Date.now() / 1000 - timestamp);
+            if (seconds < 60) return seconds + ' seconds ago';
+            if (seconds < 3600) return Math.floor(seconds / 60) + ' minutes ago';
+            if (seconds < 86400) return Math.floor(seconds / 3600) + ' hours ago';
+            return Math.floor(seconds / 86400) + ' days ago';
+        }
+
+        // Infinite scroll
+        window.addEventListener('scroll', () => {
+            const scrollBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 200;
+            const txTab = document.getElementById('tab-transactions');
+            const utxoTab = document.getElementById('tab-utxos');
+
+            if (scrollBottom) {
+                if (txTab.classList.contains('active') && !isLoadingTx && (txPage + 1) * 25 < txTotal) {
+                    txPage++;
+                    loadTransactions(txPage);
+                } else if (utxoTab.classList.contains('active') && !isLoadingUtxo && (utxoPage + 1) * 25 < utxoTotal) {
+                    utxoPage++;
+                    loadUtxos(utxoPage);
+                }
+            }
+        });
+    </script>
+
+    <%- include('partials/footer') %>

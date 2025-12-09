@@ -1,0 +1,359 @@
+<%- include('partials/header') %>
+
+    <div class="blocks-page">
+        <div class="page-header">
+            <div class="header-left">
+                <h1><i class="fas fa-cubes"></i> Blocks</h1>
+                <p class="page-subtitle">Browse all blocks on the <%= config.coinName %> blockchain</p>
+            </div>
+            <div class="auto-refresh-indicator" id="refresh-indicator" title="Auto-refresh enabled (page 1 only)">
+                <i class="fas fa-sync-alt"></i>
+                <span class="refresh-countdown" id="refresh-countdown">10s</span>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div class="card-header">
+                <h2><i class="fas fa-cube"></i> Block List</h2>
+                <div class="header-controls">
+                    <span class="showing-info" id="blocks-showing">
+                        Showing 1-<%= Math.min(25, blocks.length) %> of <%= formatNumber(tipHeight + 1) %>
+                    </span>
+                    <div class="header-pagination">
+                        <button class="page-btn-sm" id="blocks-prev" onclick="loadPrevBlocks()" disabled>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button class="page-btn-sm" id="blocks-next" onclick="loadNextBlocks()" <%=tipHeight <=25
+                            ? 'disabled' : '' %>>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Height</th>
+                            <th>Hash</th>
+                            <th>Timestamp</th>
+                            <th>Transactions</th>
+                            <th>Size</th>
+                            <th>Difficulty</th>
+                        </tr>
+                    </thead>
+                    <tbody id="blocks-tbody">
+                        <% blocks.forEach(function(block) { %>
+                            <tr class="clickable-row" onclick="window.location='/block/<%= block.id %>'">
+                                <td><span class="block-height">
+                                        <%= formatNumber(block.height) %>
+                                    </span></td>
+                                <td>
+                                    <span class="hash-value" title="<%= block.id %>">
+                                        <%= formatHash(block.id, 20) %>
+                                            <button class="copy-btn"
+                                                onclick="event.stopPropagation(); copyToClipboard('<%= block.id %>')"
+                                                title="Copy">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="time-cell">
+                                        <span class="time-ago">
+                                            <%= formatTimeAgo(block.timestamp) %>
+                                        </span>
+                                        <span class="time-full">
+                                            <%= formatDate(block.timestamp) %>
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <%= block.tx_count %>
+                                </td>
+                                <td>
+                                    <%= formatBytes(block.size) %>
+                                </td>
+                                <td>
+                                    <%= block.difficulty ? block.difficulty.toLocaleString(undefined,
+                                        {maximumFractionDigits: 2}) : '--' %>
+                                </td>
+                            </tr>
+                            <% }); %>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="blocks-loader" class="infinite-loader" style="display: none;">
+                <i class="fas fa-spinner fa-spin"></i> Loading more blocks...
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .auto-refresh-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--success);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .auto-refresh-indicator:hover {
+            border-color: var(--success);
+        }
+
+        .auto-refresh-indicator.spinning i {
+            animation: spin 1s linear infinite;
+        }
+
+        .auto-refresh-indicator.paused {
+            color: var(--text-secondary);
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .refresh-countdown {
+            font-family: monospace;
+            min-width: 2.5rem;
+        }
+
+        .new-block-row {
+            animation: highlightNew 2s ease-out;
+        }
+
+        @keyframes highlightNew {
+            0% {
+                background-color: rgba(245, 166, 35, 0.3);
+            }
+
+            100% {
+                background-color: transparent;
+            }
+        }
+    </style>
+
+    <script>
+        // State
+        let blocksPage = 0;
+        let currentTipHeight = <%= tipHeight %>;
+        let isLoadingBlocks = false;
+        let autoRefreshEnabled = true;
+        let countdown = 10;
+        let countdownInterval = null;
+
+        // Load next page
+        function loadNextBlocks() {
+            blocksPage++;
+            loadBlocks(blocksPage, false);
+        }
+
+        // Load prev page
+        function loadPrevBlocks() {
+            if (blocksPage > 0) {
+                blocksPage--;
+                loadBlocks(blocksPage, false);
+            }
+        }
+
+        // Load blocks
+        async function loadBlocks(page, append = true) {
+            if (isLoadingBlocks) return;
+            isLoadingBlocks = true;
+
+            const loader = document.getElementById('blocks-loader');
+            loader.style.display = 'flex';
+
+            try {
+                const response = await fetch(`/api/blocks/recent?page=${page + 1}`);
+                const data = await response.json();
+
+                currentTipHeight = data.tipHeight;
+                const blocks = data.blocks;
+
+                const tbody = document.getElementById('blocks-tbody');
+                if (!append) tbody.innerHTML = '';
+
+                blocks.forEach(block => {
+                    const row = createBlockRow(block, false);
+                    tbody.insertAdjacentHTML('beforeend', row);
+                });
+
+                // Update showing info
+                const start = page * 25 + 1;
+                const end = Math.min((page + 1) * 25, currentTipHeight + 1);
+                document.getElementById('blocks-showing').textContent =
+                    `Showing ${start}-${end} of ${(currentTipHeight + 1).toLocaleString()}`;
+
+                // Update pagination buttons
+                document.getElementById('blocks-prev').disabled = page === 0;
+                document.getElementById('blocks-next').disabled = (page + 1) * 25 >= currentTipHeight + 1;
+
+            } catch (err) {
+                console.error('Failed to load blocks:', err);
+            } finally {
+                loader.style.display = 'none';
+                isLoadingBlocks = false;
+            }
+        }
+
+        // Refresh latest blocks (page 1 only)
+        async function refreshBlocks() {
+            if (blocksPage !== 0 || isLoadingBlocks) return;
+            isLoadingBlocks = true;
+
+            const indicator = document.getElementById('refresh-indicator');
+            indicator.classList.add('spinning');
+
+            try {
+                const response = await fetch('/api/blocks/recent?page=1');
+                const data = await response.json();
+
+                const tbody = document.getElementById('blocks-tbody');
+                const currentFirstHeight = parseInt(tbody.querySelector('tr td span.block-height')?.textContent.replace(/,/g, '') || '0');
+
+                // Check if there are new blocks
+                if (data.tipHeight > currentTipHeight) {
+                    currentTipHeight = data.tipHeight;
+
+                    // Rebuild table with new blocks highlighted
+                    tbody.innerHTML = '';
+                    data.blocks.forEach(block => {
+                        const isNew = block.height > currentFirstHeight;
+                        const row = createBlockRow(block, isNew);
+                        tbody.insertAdjacentHTML('beforeend', row);
+                    });
+
+                    // Update showing info
+                    document.getElementById('blocks-showing').textContent =
+                        `Showing 1-${data.blocks.length} of ${(currentTipHeight + 1).toLocaleString()}`;
+                }
+            } catch (err) {
+                console.error('Failed to refresh blocks:', err);
+            } finally {
+                isLoadingBlocks = false;
+                indicator.classList.remove('spinning');
+                countdown = 10;
+            }
+        }
+
+        // Create block row HTML
+        function createBlockRow(block, isNew = false) {
+            return `
+                <tr class="clickable-row ${isNew ? 'new-block-row' : ''}" onclick="window.location='/block/${block.id}'">
+                    <td><span class="block-height">${block.height.toLocaleString()}</span></td>
+                    <td>
+                        <span class="hash-value" title="${block.id}">
+                            ${formatHash(block.id, 20)}
+                            <button class="copy-btn" onclick="event.stopPropagation(); copyToClipboard('${block.id}')" title="Copy">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </span>
+                    </td>
+                    <td>
+                        <div class="time-cell">
+                            <span class="time-ago">${formatTimeAgo(block.timestamp)}</span>
+                        </div>
+                    </td>
+                    <td>${block.tx_count}</td>
+                    <td>${formatBytes(block.size)}</td>
+                    <td>${block.difficulty ? block.difficulty.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '--'}</td>
+                </tr>
+            `;
+        }
+
+        // Utility functions
+        function formatHash(hash, length = 16) {
+            if (!hash) return '';
+            if (hash.length <= length) return hash;
+            const half = Math.floor(length / 2);
+            return hash.substring(0, half) + '...' + hash.substring(hash.length - half);
+        }
+
+        function formatTimeAgo(timestamp) {
+            const seconds = Math.floor(Date.now() / 1000 - timestamp);
+            if (seconds < 60) return seconds + ' seconds ago';
+            if (seconds < 3600) return Math.floor(seconds / 60) + ' minutes ago';
+            if (seconds < 86400) return Math.floor(seconds / 3600) + ' hours ago';
+            return Math.floor(seconds / 86400) + ' days ago';
+        }
+
+        function formatBytes(bytes) {
+            if (bytes >= 1048576) return (bytes / 1048576).toFixed(2) + ' MB';
+            if (bytes >= 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return bytes + ' B';
+        }
+
+        // Countdown timer
+        function updateCountdown() {
+            if (!autoRefreshEnabled || blocksPage !== 0) {
+                document.getElementById('refresh-countdown').textContent = blocksPage !== 0 ? 'Page ' + (blocksPage + 1) : 'Paused';
+                return;
+            }
+
+            countdown--;
+            document.getElementById('refresh-countdown').textContent = countdown + 's';
+
+            if (countdown <= 0) {
+                refreshBlocks();
+            }
+        }
+
+        // Toggle auto-refresh
+        function toggleAutoRefresh() {
+            autoRefreshEnabled = !autoRefreshEnabled;
+            const indicator = document.getElementById('refresh-indicator');
+
+            if (autoRefreshEnabled) {
+                indicator.classList.remove('paused');
+                indicator.title = 'Auto-refresh enabled (click to pause)';
+                countdown = 10;
+            } else {
+                indicator.classList.add('paused');
+                indicator.title = 'Auto-refresh paused (click to resume)';
+                document.getElementById('refresh-countdown').textContent = 'Paused';
+            }
+        }
+
+        // Infinite scroll
+        window.addEventListener('scroll', () => {
+            const scrollBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 200;
+
+            if (scrollBottom && !isLoadingBlocks && (blocksPage + 1) * 25 < currentTipHeight + 1) {
+                blocksPage++;
+                loadBlocks(blocksPage, true);
+            }
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function () {
+            // Start countdown
+            countdownInterval = setInterval(updateCountdown, 1000);
+
+            // Click handler for indicator
+            document.getElementById('refresh-indicator').addEventListener('click', toggleAutoRefresh);
+        });
+    </script>
+
+    <%- include('partials/footer') %>
