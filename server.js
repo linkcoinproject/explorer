@@ -107,6 +107,8 @@ app.locals.formatDate = formatDate;
 app.locals.formatHashrate = formatHashrate;
 app.locals.formatDifficulty = formatDifficulty;
 
+app.use(express.static(path.join(__dirname, 'public')));
+
 // API helper - for detail pages that need fresh data or data not in cache
 // User actions should NOT trigger API calls for live data (use cache instead)
 const fetchFromElectrs = async (endpoint) => {
