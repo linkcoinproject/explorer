@@ -1,24 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="<%= config.explorerName %> - Blockchain explorer for <%= config.coinName %>">
-    <!-- Add these lines in <head> if not already there -->
-    <link rel="icon" type="image/svg+xml" href="/img/lnc4.svg">
-    <link rel="alternate icon" href="/img/favicon.ico">
-    <link rel="shortcut icon" href="/img/favicon.ico">
-    <title>
-        <%= title %> | <%= config.explorerName %>
-    </title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
+    <head>
+        <!-- 1. Core Meta -->
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="description" content="<%= config.explorerName %> - Blockchain explorer for <%= config.coinName %>">
+        <meta name="theme-color" content="#1e40af"> <!-- warna tema browser & mobile -->
+    
+        <!-- 2. Favicon & Apple Touch Icon (urutan penting!) -->
+        <link rel="icon" type="image/svg+xml" href="/img/lnc4.svg">
+        <link rel="alternate icon" href="/img/favicon.ico">
+        <link rel="shortcut icon" href="/img/favicon.ico">
+        <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
+    
+        <!-- 3. Title -->
+        <title><%= title %> | <%= config.explorerName %></title>
+    
+        <!-- 4. Preconnect & Font (Google Fonts Inter) -->
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+        <!-- 5. CSS External -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+        <link rel="stylesheet" href="/css/style.css?v=<%= new Date().getTime() %>"> <!-- cache busting -->
+    
+        <!-- 6. Critical Scripts (Chart.js + Silence Wallet Spam) -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    
+        <!-- Optional: Tambahkan preload untuk aset penting -->
+        <link rel="preload" href="/css/style.css" as="style">
+        <link rel="preload" href="/img/lnc4.svg" as="image">
+    </head>
 
 <body>
     <script>
